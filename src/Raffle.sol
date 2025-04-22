@@ -27,7 +27,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     /* State variables */
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
-    uint256 private immutable i_entraceFee;
+    uint256 private immutable i_entranceFee;
     uint256 private immutable i_interval;
     bytes32 private immutable i_keyHash;
     uint256 private immutable i_subscriptionId;
@@ -39,17 +39,18 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     /* Events */
     event RaffleEntered(address indexed player);
+    event RequestRaffleWinner(uint256 indexed requestId);
     event WinnerPicked(address indexed winner);
 
     constructor(
-        uint256 entraceFee,
+        uint256 entranceFee,
         uint256 interval,
         address vrfCoordinator,
         bytes32 gasLane,
         uint256 subscriptionId,
         uint32 callBackGasLimit
     ) VRFConsumerBaseV2Plus(vrfCoordinator) {
-        i_entraceFee = entraceFee;
+        i_entranceFee = entranceFee;
         i_interval = interval;
         s_lastTimeStamp = block.timestamp;
         i_keyHash = gasLane;
@@ -61,7 +62,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     }
 
     function enterRaffle() external payable {
-        if (msg.value < i_entraceFee) {
+        if (msg.value < i_entranceFee) {
             revert Raffle__SendMoreToEnterRaffle();
         }
         if (s_raffleState != RaffleState.OPEN) {
@@ -114,7 +115,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
                 VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
             )
         });
-        s_vrfCoordinator.requestRandomWords(request);
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
+        emit RequestRaffleWinner(requestId);
     }
 
     function fulfillRandomWords(uint256, /* requestId */ uint256[] calldata randomWords) internal override {
@@ -135,6 +137,22 @@ contract Raffle is VRFConsumerBaseV2Plus {
      * Getter Function
      */
     function getEntranceFee() external view returns (uint256) {
-        return i_entraceFee;
+        return i_entranceFee;
+    }
+
+    function getRaffleState() external view returns (RaffleState) {
+        return s_raffleState;
+    }
+
+    function getPlayers(uint256 index) external view returns (address) {
+        return s_players[index];
+    }
+
+    function getLastTimeStamp() external view returns (uint256) {
+        return s_lastTimeStamp;
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
     }
 }
